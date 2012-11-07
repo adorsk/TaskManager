@@ -68,6 +68,7 @@ if __name__ == '__main__':
         TaskClass = getattr(module, class_name)
         task_args = task_config.get('args', [])
         task_kwargs = task_config.get('kwargs', {})
+        task_kwargs['logger'] = logger
         task = TaskClass(*task_args, **task_kwargs)
     except:
         logger.exception("Unable to create task.")
