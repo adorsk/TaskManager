@@ -1,4 +1,4 @@
-EventedTask
+TaskManager
 ===========
 
-Task which sends event signals when it changes.
+Library for working with tasks.
