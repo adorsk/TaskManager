@@ -7,9 +7,11 @@ import httplib2
 import logging
 import importlib
 import select
+import task_manager
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class PostingTaskRunner(object):
     def __init__(self, post_url=None, delay=5, **kwargs):
@@ -21,10 +23,17 @@ class PostingTaskRunner(object):
 
     def run_task(self, task):
         logger.debug('run_task %s' % task)
-        task.on_update.connect(self.on_task_update)
-        task.call()
+        task.on_set.connect(self.on_task_update)
+        try:
+            task.call()
+        except Exception as e:
+            error = "Error running: %s" % e
+            logger.debug(error)
+            logger.exception()
+            task.errors.append(error)
+            task.status = "rejected"
 
-    def on_task_update(self, task):
+    def on_task_update(self, task, **kwargs):
         timer = self.timers.get(task)
         if timer:
             timer.cancel()
@@ -35,6 +44,7 @@ class PostingTaskRunner(object):
     def post_task(self, task=None):
         logger.debug('posting, task is: %s' % task.to_dict())
         logger.debug('post url is: %s' % self.post_url)
+        logger.debug('post data is: %s' % task.to_dict())
         try:
             rh, rc = self.http.request(
                 self.post_url,
@@ -70,10 +80,14 @@ if __name__ == '__main__':
         class_name = class_parts[-1]
         module = importlib.import_module(module_name)
         TaskClass = getattr(module, class_name)
+
+        # Instrument the task class to send signals.
+        SignalingTaskClass = task_manager.get_signaling_task_class(TaskClass)
+
         task_args = task_config.get('args', [])
         task_kwargs = task_config.get('kwargs', {})
         task_kwargs['logger'] = logger
-        task = TaskClass(*task_args, **task_kwargs)
+        task = SignalingTaskClass(*task_args, **task_kwargs)
     except:
         logger.exception("Unable to create task.")
         raise

@@ -13,10 +13,12 @@ class Task(object):
     # This is intended primarily for signaling.
     _task_properties = ['status', 'data', 'progress', 'message', 'errors']
 
-    def __init__(self, logger=logging.getLogger(), **kwargs):
-        self.logger = logger
+    def __init__(self, *args, **kwargs):
+        self.logger = kwargs.get('logger', logging.getLogger())
         for p in self._task_properties:
             setattr(self, "_%s" % p, kwargs.get(p, None))
+        if not getattr(self, 'errors'):
+            self.errors = []
 
     @classmethod
     def add_property(cls, attr):
