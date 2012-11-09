@@ -11,7 +11,7 @@ class Task(object):
 
     # Create some attributes as properties to allow for instrumentation later.
     # This is intended primarily for signaling.
-    _task_properties = ['status', 'data']
+    _task_properties = ['status', 'data', 'progress', 'message', 'errors']
 
     def __init__(self, logger=logging.getLogger(), **kwargs):
         self.logger = logger
