@@ -29,7 +29,7 @@ class PostingTaskRunner(object):
         except Exception as e:
             error = "Error running: %s" % e
             logger.debug(error)
-            logger.exception()
+            logger.exception(error)
             task.errors.append(error)
             task.status = "rejected"
 
@@ -42,9 +42,10 @@ class PostingTaskRunner(object):
         self.timers[task].start()
 
     def post_task(self, task=None):
-        logger.debug('posting, task is: %s' % task.to_dict())
-        logger.debug('post url is: %s' % self.post_url)
-        logger.debug('post data is: %s' % task.to_dict())
+        if getattr(logger, 'verbose', None):
+            logger.debug('posting, task is: %s' % task.to_dict())
+            logger.debug('post url is: %s' % self.post_url)
+            logger.debug('post data is: %s' % task.to_dict())
         try:
             rh, rc = self.http.request(
                 self.post_url,
@@ -52,8 +53,9 @@ class PostingTaskRunner(object):
                 headers=self.headers,
                 body=json.dumps(task.to_dict())
             )
-            logger.debug('response headers is: %s' % rh)
-            logger.debug('response content is: %s' % rc)
+            if getattr(logger, 'verbose', None):
+                logger.debug('response headers is: %s' % rh)
+                logger.debug('response content is: %s' % rc)
         except:
             logger.exception("Posting error.")
             raise
@@ -96,9 +98,18 @@ if __name__ == '__main__':
     post_url = task_definition['config']['update_url']
     task_runner = PostingTaskRunner(post_url=post_url, delay=1)
 
+    # If running from tty, use same stdout/stderr.
+    if sys.stdin.isatty():
+        daemon_stdin = sys.stdin
+        daemon_stderr = sys.stderr
+    else:
+        daemon_stdin = None
+        daemon_stderr = None
+
     # Run task as Daemon.
     with daemon.DaemonContext(
-        stdout=sys.stdout,
+        stdout=daemon_stdin,
+        stderr=daemon_stderr,
         files_preserve=[handler.stream for handler in logger.handlers]
     ):
         task_runner.run_task(task)
