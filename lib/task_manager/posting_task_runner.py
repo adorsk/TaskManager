@@ -6,6 +6,7 @@ import json
 import httplib2
 import logging
 import importlib
+import select
 
 
 logger = logging.getLogger(__name__)
@@ -53,10 +54,13 @@ if __name__ == '__main__':
     logger.addHandler(logging.FileHandler(logfile))
 
     try:
+        if not select.select([sys.stdin,],[],[],0.0)[0]:
+            raise Exception("No input provided on stdin.")
         task_json = sys.stdin.read()
         task_definition = json.loads(task_json)
-    except:
+    except Exception as e:
         logger.exception("Unable to read task definition from stdin.")
+        raise e
 
     # Load the task
     try:
