@@ -6,6 +6,20 @@ from blinker import Signal
 import logging
 
 
+class TaskMessageLogHandler(logging.Handler):
+    """ Custom log handler that saves log messages
+    to a task's 'message' attribute. """
+
+    def __init__(self, task=None, **kwargs):
+        logging.Handler.__init__(self, **kwargs)
+        self.task = task
+
+    def emit(self, record):
+        try:
+            self.task.message = self.format(record)
+        except:
+            self.handleError(record)
+
 class Task(object):
     """ A basic task object. """
 
@@ -19,6 +33,9 @@ class Task(object):
             setattr(self, "_%s" % p, kwargs.get(p, None))
         if not getattr(self, 'errors'):
             self.errors = []
+
+    def get_message_log_handler(self):
+        return TaskMessageLogHandler(self)
 
     @classmethod
     def add_property(cls, attr):
