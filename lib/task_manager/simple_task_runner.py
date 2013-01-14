@@ -3,7 +3,6 @@ Simple task runner, intended mainly for testing tasks.
 """
 from threading import Timer
 import time
-import daemon
 import sys
 import json
 import logging
@@ -20,6 +19,7 @@ class SimpleTaskRunner(object):
 
     def run_task(self, task):
         logger.debug('run_task %s' % task)
+        task.on_set.connect(self.on_task_update)
         try:
             task.call()
         except Exception as e:
@@ -28,11 +28,10 @@ class SimpleTaskRunner(object):
             logger.exception(error)
             task.errors.append(error)
 
+    def on_task_update(self, task, **kwargs):
+        print "on_task_update, kwargs:", kwargs
+
 if __name__ == '__main__':
-
-    logfile = '/tmp/SimpleTaskRunner.log'
-    logger.addHandler(logging.FileHandler(logfile))
-
     try:
         if not select.select([sys.stdin,],[],[],0.0)[0]:
             raise Exception("No input provided on stdin.")
@@ -51,10 +50,13 @@ if __name__ == '__main__':
         module = importlib.import_module(module_name)
         TaskClass = getattr(module, class_name)
 
+        # Instrument the task class to send signals.
+        SignalingTaskClass = task_manager.get_signaling_task_class(TaskClass)
+
         task_args = task_config.get('args', [])
         task_kwargs = task_config.get('kwargs', {})
         task_kwargs['logger'] = logger
-        task = TaskClass(*task_args, **task_kwargs)
+        task = SignalingTaskClass(*task_args, **task_kwargs)
     except:
         logger.exception("Unable to create task.")
         raise
@@ -62,18 +64,5 @@ if __name__ == '__main__':
     # Create the runner.
     task_runner = SimpleTaskRunner()
 
-    # If running from tty, use same stdout/stderr.
-    if sys.stdin.isatty():
-        daemon_stdout = sys.stdout
-        daemon_stderr = sys.stderr
-    else:
-        daemon_stdout = None
-        daemon_stderr = None
-
-    # Run task as Daemon.
-    with daemon.DaemonContext(
-        stdout=daemon_stdout,
-        stderr=daemon_stderr,
-        files_preserve=[handler.stream for handler in logger.handlers]
-    ):
-        task_runner.run_task(task)
+    # Run task.
+    task_runner.run_task(task)

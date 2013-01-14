@@ -9,14 +9,24 @@ import logging
 class TaskMessageLogHandler(logging.Handler):
     """ Custom log handler that saves log messages
     to a task's 'message' attribute. """
-
     def __init__(self, task=None, **kwargs):
         logging.Handler.__init__(self, **kwargs)
         self.task = task
-
     def emit(self, record):
         try:
             self.task.message = self.format(record)
+        except:
+            self.handleError(record)
+            
+class TaskProgressLogHandler(logging.Handler):
+    """ Custom log handler that updates a task's 
+    'progress' attribute. """
+    def __init__(self, task=None, **kwargs):
+        logging.Handler.__init__(self, **kwargs)
+        self.task = task
+    def emit(self, record):
+        try:
+            self.task.progress = float(self.format(record))
         except:
             self.handleError(record)
 
@@ -29,6 +39,18 @@ class LoggerLogHandler(logging.Handler):
 
     def emit(self, record):
         self.logger.log(record.levelno, self.format(record))
+
+def get_message_logger(task, **kwargs):
+    logger = logging.getLogger('task_msg_%s' % id(task))
+    logger.addHandler(TaskMessageLogHandler(task))
+    logger.setLevel(logging.INFO)
+    return logger
+
+def get_progress_logger(task, **kwargs):
+    logger = logging.getLogger('task_progress_%s' % id(task))
+    logger.addHandler(TaskProgressLogHandler(task))
+    logger.setLevel(logging.INFO)
+    return logger
 
 class Task(object):
     """ A basic task object. """
