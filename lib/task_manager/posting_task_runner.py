@@ -8,6 +8,7 @@ import logging
 import importlib
 import select
 import task_manager
+import tempfile
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,6 @@ class PostingTaskRunner(object):
         self.headers = {'Content-type': 'application/json'}
 
     def run_task(self, task):
-        logger.debug('run_task %s' % task)
         task.on_set.connect(self.on_task_update)
         try:
             task.call()
@@ -62,7 +62,7 @@ class PostingTaskRunner(object):
 
 if __name__ == '__main__':
 
-    logfile = '/tmp/PostingTaskRunner.log'
+    hndl, logfile = tempfile.mkstemp(prefix="ptr.")
     logger.addHandler(logging.FileHandler(logfile))
 
     try:
